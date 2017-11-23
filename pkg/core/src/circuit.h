@@ -76,7 +76,11 @@ protected:
     void connectFrame();
     void assignFiMinLvl();
 
-    void runScoap(); 
+    void runScoap();
+    //=========================================================================//
+    //11/23 update
+    void output_Graph();
+    //=========================================================================// 
 };
 
 inline Circuit::Circuit() {

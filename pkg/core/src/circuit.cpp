@@ -6,6 +6,11 @@
 // **************************************************************************
 
 #include <climits>
+//=========================================================================//
+//11/23 update
+#include <fstream>
+//=========================================================================//
+
 
 #include "circuit.h"
 
@@ -50,6 +55,12 @@ bool Circuit::build(Netlist * const nl, const int &nframe,
 	assignFiMinLvl();
     
     runScoap(); 
+    //=========================================================================//
+    //11/23 update
+    cout << "output graph "<<endl;
+    output_Graph();
+
+    //=========================================================================//    
 
     return true;
 }
@@ -760,3 +771,29 @@ void Circuit::runScoap() {
         }
     }
 }
+
+//=========================================================================//
+//11/23 update
+
+void  Circuit::output_Graph() { 
+    ofstream file("graph.txt");
+    if(!file)
+    {
+        cerr << "Can't open file!\n";
+        return;
+    }
+    
+    file << ngate_ << "\n"; // number of gates
+    //edges
+    for(int i=0 ; i<ngate_ ; i++)
+    {
+        for(int j=0 ;j < gates_[i].nfi_; j++){
+            file << i <<","<<gates_[i].fis_[j]<<"\n";
+        }
+    }
+    
+    file.close();
+
+}
+
+//=========================================================================//
