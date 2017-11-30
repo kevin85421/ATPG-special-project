@@ -16,7 +16,39 @@
 
 namespace CoreNs {
 
+//=========================================================================// 
+//11/30 update
+class cycle{
+    public:
+        cycle( vector<int>& v);
+        void print();//for debug
+        void getPI(Gate* gates);
+        void getPO(Gate* gates_);
+        void printPI();//for debug
+        void printPO();//for debug
+    
+    private:
+        vector<int> nodes;
+        vector< vector<int> > pi; // supergate primary input ex : vector<int>[0] = 2,3 (gate 2 , fanin 3)
+        vector< vector<int> > po; // supergate primary output
+
+
+};
+
+inline cycle::cycle( vector<int>& v){
+    nodes.assign(v.begin(), v.end());   
+}
+
+//=========================================================================// 
+
+
 class Circuit {
+private:
+    //=========================================================================// 
+    //11/30 update
+    vector< cycle > cycles;
+    //=========================================================================//
+    
 public:
     Circuit();
     ~Circuit();
@@ -79,8 +111,12 @@ protected:
     void runScoap();
     //=========================================================================//
     //11/23 update
-    void output_Graph();
+    void output_Graph(); //run Johnson's algorithm and write the result to cycles.txt
     //=========================================================================// 
+    //11/30 update
+    void read_cycle(); // read cycle into vector< vector<int> > cycles from cycles.txt
+
+    //=========================================================================//
 };
 
 inline Circuit::Circuit() {
@@ -106,6 +142,10 @@ inline Circuit::~Circuit() {
     delete [] cellToGate_;
     delete [] portToGate_;
 }
+
+
+
+
 
 };
 

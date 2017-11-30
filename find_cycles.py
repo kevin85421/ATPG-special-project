@@ -16,9 +16,11 @@ for i in range(len(lines_)-1):
 	_edge1 = []
 	_edge1.append(int(one_edge_string[1]))
 	_edge1.append(int(one_edge_string[0]))
+	
 	_edge2 = []
 	_edge2.append(int(one_edge_string[0]))
 	_edge2.append(int(one_edge_string[1]))
+	
 	edges.append(_edge1)
 	edges.append(_edge2)
 """
@@ -36,6 +38,8 @@ G.add_nodes_from(nodes)
 # Add a list of edges:
 G.add_edges_from(edges)
 
+#nx.draw(G,with_labels=True)
+#plt.show()
 #Return a list of cycles described as a list o nodes
 cycles  = list(nx.simple_cycles(G))
 
@@ -47,9 +51,9 @@ for i in range(len(cycles)):
 for j in range(len(delete),0,-1):
 	cycles.pop(delete[j-1])
 
-print(cycles)
+#print(cycles)
 
-file = open('cycle.txt','w')
+file = open('cycles.txt','w')
 
 for i in range(len(cycles)):
 	str1 = ' '.join(str(e) for e in cycles[i])

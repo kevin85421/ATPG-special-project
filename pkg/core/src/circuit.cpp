@@ -793,7 +793,128 @@ void  Circuit::output_Graph() {
     }
     
     file.close();
-
+    system( "./find_cycles_script.sh" ); 
+    //run Johnson's algorithm and write the result to cycle.txt
+    this->read_cycle();
 }
 
 //=========================================================================//
+//11/30 update
+
+void Circuit::read_cycle() { // read cycle into vector< vector<int> > cycles from cycles.txt
+    string line;
+    ifstream myfile ("cycles.txt");
+    if (myfile.is_open())
+    {
+        while ( getline (myfile,line) )
+        {
+            vector<int> one_cycle;
+            size_t pos = 0;
+            string delimiter(" ");
+            string token;
+            while (1)
+            {
+                if(line.find(delimiter) == string::npos)
+                {
+                    int element = stoi(line);
+                    one_cycle.push_back(element);
+                    break;   
+                }
+                
+                pos = line.find(delimiter);
+                token = line.substr(0,pos);
+                int element = stoi(token);
+                one_cycle.push_back(element);
+                line.erase(0, pos + delimiter.length());
+            }
+
+            cycle c(one_cycle);
+            //debug
+            c.print();
+            cout << "PI :"<<endl;
+            c.getPI(gates_);
+            c.printPI();
+            cout << "PO :"<<endl;
+            c.getPO(gates_);
+            c.printPO();
+            //
+            cycles.push_back(c);
+        }
+        myfile.close();
+    }
+    else cout << "Unable to open cycles.txt"; 
+
+}
+
+
+void cycle::print(){ // for debug
+    for(int i = 0;i < nodes.size(); i++ ) cout <<nodes[i]<<" ";
+    cout << endl;
+}
+
+void cycle::getPI(Gate* gates_){
+    for(int i = 0;i < nodes.size(); i++){
+        for(int j = 0 ; j < gates_[nodes[i]].nfi_ ; j++)
+        {
+            bool flag = true;
+            for(int k = 0 ; k < nodes.size() ; k++)
+            {
+                if( gates_[nodes[i]].fis_[j] == nodes[k] )
+                {
+                    flag = false;  
+                    break;
+                } 
+            }
+            
+            if (flag)
+            {
+                vector<int> v; // (gate, fanin)
+                v.push_back(nodes[i]);
+                v.push_back(gates_[nodes[i]].fis_[j]);
+                pi.push_back(v);
+            } 
+        }
+    }
+
+}
+
+void cycle::printPI(){
+    for(int i = 0;i < pi.size();i ++){
+        cout <<"("<<pi[i][0]<<","<<pi[i][1]<<")"<<endl;
+    }
+}
+
+void cycle::getPO(Gate* gates_){
+    for(int i = 0;i < nodes.size(); i++){
+        for(int j = 0 ; j < gates_[nodes[i]].nfo_ ; j++)
+        {
+            bool flag = true;
+            for(int k = 0 ; k < nodes.size() ; k++)
+            {
+                if( gates_[nodes[i]].fos_[j] == nodes[k] )
+                {
+                    flag = false;  
+                    break;
+                } 
+            }
+            
+            if (flag)
+            {
+                vector<int> v; // (gate, fanin)
+                v.push_back(nodes[i]);
+                v.push_back(gates_[nodes[i]].fos_[j]);
+                po.push_back(v);
+            } 
+        }
+    }
+
+}
+
+void cycle::printPO(){
+    for(int i = 0;i < po.size();i ++){
+        cout <<"("<<po[i][0]<<","<<po[i][1]<<")"<<endl;
+    }
+}
+//=========================================================================//
+
+
