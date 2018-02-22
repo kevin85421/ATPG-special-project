@@ -14,6 +14,10 @@
 
 #include "gate.h"
 
+//1/25 update
+#include <queue>
+
+//
 namespace CoreNs {
 
 //=========================================================================// 
@@ -26,9 +30,10 @@ class cycle{
         void getPO(Gate* gates_);
         void printPI();//for debug
         void printPO();//for debug
-    
-    private:
         vector<int> nodes;
+
+    private:
+        
         vector< vector<int> > pi; // supergate primary input ex : vector<int>[0] = 2,3 (gate 2 , fanin 3)
         vector< vector<int> > po; // supergate primary output
 
@@ -46,7 +51,9 @@ class Circuit {
 private:
     //=========================================================================// 
     //11/30 update
+    vector< cycle > cycles_candidate;
     vector< cycle > cycles;
+    vector< int > fanout_branches;
     //=========================================================================//
     
 public:
@@ -110,12 +117,14 @@ protected:
 
     void runScoap();
     //=========================================================================//
-    //11/23 update
-    void output_Graph(); //run Johnson's algorithm and write the result to cycles.txt
-    //=========================================================================// 
-    //11/30 update
-    void read_cycle(); // read cycle into vector< vector<int> > cycles from cycles.txt
-
+    //1/25 update : find_fanout_branches() , bfs(int idx)
+    //2/1  update : find_reconvergence(int idx) , reset() , pop_fanout_branches(int u)
+    void find_fanout_branches();
+    void bfs(int idx);
+    void find_reconvergence(int idx);
+    void reset();
+    void pop_fanout_branches(int u);
+    bool cycle_available(cycle& c);
     //=========================================================================//
 };
 

@@ -85,6 +85,35 @@ public:
     Value     getInputCtrlValue() const;
     Value     getOutputCtrlValue() const;
 
+    int getd1(){return d1;} 
+    void setd1(int i){d1 = i;} 
+    int getd2(){return d2;} 
+    void setd2(int i){d2 = i;} 
+    int getPI1(){return pi1;} 
+    void setPI1(int i){pi1 = i;} 
+    int getPI2(){return pi2;} 
+    void setPI2(int i){pi2 = i;} 
+    void reset(){ 
+        d1 = -1;
+        d2 = -1;
+        pi1= -1;
+        pi2= -1;
+    }
+    void set_Fanoutb(bool b){fanoutb = b;}
+    bool get_Fanoutb(){return fanoutb;}
+    bool get_available(){return available;}
+    void set_available(bool b){available = b;}
+
+private:
+    //1/25 update for bfs
+    int d1;
+    int pi1;
+    int d2;
+    int pi2;
+    bool fanoutb; // if this gate is fanout branches , fanoutb = true
+    bool available; // true : this gate is available
+    
+
 };
 
 inline Gate::Gate() {
@@ -112,6 +141,14 @@ inline Gate::Gate() {
 
     depthFromPo_ = -1;
     fiMinLvl_    = -1;
+
+    //1/25 update
+    d1 = -1;
+    pi1 = -1;
+    d2 = -1;
+    pi2 = -1;
+    fanoutb = false;
+    available = true;
 }
 
 inline Gate::~Gate() {
@@ -132,6 +169,8 @@ inline void Gate::print() const {
     cout << "#    fo[" << nfo_ << "]";
     for (int j = 0; j < nfo_; ++j)
         cout << " " << fos_[j];
+    cout << endl;
+    cout << "  (d1,pi1,d2,pi2) = "<<"("<< d1<<","<<pi1<<","<<d2<<","<<pi2<<")"<<endl;
     cout << endl << endl;
 }
 

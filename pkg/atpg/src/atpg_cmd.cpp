@@ -552,6 +552,7 @@ bool ReportCircuitCmd::exec(const vector<string> &argv) {
     cout << "#    number of gates: " << fanMgr_->atpg_mgr->cir_->ngate_ << endl;
     cout << "#    number of nets:  " << fanMgr_->atpg_mgr->cir_->nnet_ << endl;
     //11/22 update
+    /*
     cout <<"===================================================================="<<endl;
     cout <<" gates of circuit :"<<endl;
     for(int i = 0;i < fanMgr_->atpg_mgr->cir_->ngate_; i++){
@@ -559,6 +560,7 @@ bool ReportCircuitCmd::exec(const vector<string> &argv) {
     }
 
     cout <<"===================================================================="<<endl;
+    */
     //================================================================//
     return true;
 } //}}}

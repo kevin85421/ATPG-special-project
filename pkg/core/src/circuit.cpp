@@ -6,11 +6,8 @@
 // **************************************************************************
 
 #include <climits>
-//=========================================================================//
-//11/23 update
 #include <fstream>
-//=========================================================================//
-
+#include <time.h>
 
 #include "circuit.h"
 
@@ -56,10 +53,35 @@ bool Circuit::build(Netlist * const nl, const int &nframe,
     
     runScoap(); 
     //=========================================================================//
-    //11/23 update
-    cout << "output graph "<<endl;
-    output_Graph();
+    //1/25 , 2/1 update 
+    find_fanout_branches();
+    while(!fanout_branches.empty()){
+        cout <<"bfs("<<fanout_branches[0]<<") "<<endl;
+        bfs(fanout_branches[0]);
+    }
 
+    //choose cycles
+    while(!cycles_candidate.empty())
+    {
+        if( cycle_available(cycles_candidate.back()) ){
+            cycles.push_back(cycles_candidate.back());
+            cycles_candidate.pop_back();// remove last element
+            for(int i =0; i < cycles.back().nodes.size() ; i++)
+            {
+                gates_[ cycles.back().nodes[i] ].set_available(false);
+            }
+        }else
+        {
+            cycles_candidate.pop_back();
+        }
+    }
+
+    //for debug
+    cout << "cycles : "<< cycles.size() <<endl;
+    for(int i =0 ; i < cycles.size() ; i++)
+    {
+        cycles[i].print();
+    }
     //=========================================================================//    
 
     return true;
@@ -775,77 +797,140 @@ void Circuit::runScoap() {
 //=========================================================================//
 //11/23 update
 
-void  Circuit::output_Graph() { 
-    ofstream file("graph.txt");
-    if(!file)
-    {
-        cerr << "Can't open file!\n";
-        return;
-    }
-    
-    file << ngate_ << "\n"; // number of gates
-    //edges
+void  Circuit::find_fanout_branches() {     
     for(int i=0 ; i<ngate_ ; i++)
     {
-        for(int j=0 ;j < gates_[i].nfi_; j++){
-            file << i <<","<<gates_[i].fis_[j]<<"\n";
+        if(gates_[i].nfo_ > 1)
+        {
+            fanout_branches.push_back(i);
+            gates_[i].set_Fanoutb(true);
+            //for debug
+            cout << "fanout_branches : ";
+            cout << i << " "; 
         }
+            
+    }
+    cout << endl;
+}
+
+void Circuit::bfs(int idx){
+
+    //initially : queue contains only S / d(s) = 0 , pi(s) = NULL （在此用-1）
+    queue< int > Q;
+    Q.push(idx);
+    gates_[idx].setd1(0);
+    gates_[idx].setPI1(-1);// pi = -1
+
+    
+    while(!Q.empty()){// queue is not empty
+        int u = Q.front();
+        if(gates_[u].get_Fanoutb() == true){
+            pop_fanout_branches(u);
+        }
+        Q.pop();
+        for(int i=0 ; i < gates_[u].nfo_ ; i++)
+        {
+            if( gates_[gates_[u].fos_[i]].getd1() != -1){
+                if(gates_[gates_[u].fos_[i]].getd2() == -1){
+                    gates_[gates_[u].fos_[i]].setd2(gates_[u].getd1()+1);
+                    gates_[gates_[u].fos_[i]].setPI2(u);
+                }
+            }else{
+                gates_[gates_[u].fos_[i]].setd1(gates_[u].getd1()+1);
+                gates_[gates_[u].fos_[i]].setPI1(u);
+                Q.push(gates_[u].fos_[i]);
+            }
+        }
+
     }
     
-    file.close();
-    system( "./find_cycles_script.sh" ); 
-    //run Johnson's algorithm and write the result to cycle.txt
-    this->read_cycle();
+    //找出reconvergence
+    find_reconvergence(idx);
+    //把gates的PI ,d改回來
+    reset();
+
 }
 
+void Circuit::find_reconvergence(int idx){
+    cout <<"cycles_candidate : " << endl;
+    for(int i=0 ; i < ngate_ ; i++ )
+    {
+        if(gates_[i].getd1() != -1 && gates_[i].getd2() != -1 )
+        {
+            //
+            vector<int> reconvergence;
+            reconvergence.push_back(i);
+            //path d1
+            int n = i;
+            while(1)
+            {
+                if(gates_[n].getPI1() != idx)
+                {
+                    reconvergence.push_back(gates_[n].getPI1());
+                    n = gates_[n].getPI1();
+                }else{
+                    break;
+                }
+            }
+            reconvergence.push_back(idx);
+            //path d2
+            reconvergence.push_back(gates_[i].getPI2());
+            int k = gates_[i].getPI2();
+            if(k != idx){
+                while(1)
+                {
+                    if(gates_[k].getPI1() != idx)
+                    {
+                        reconvergence.push_back(gates_[k].getPI1());
+                        k = gates_[k].getPI1();
+                    }else{
+                        break;
+                    }
+                }
+            }
+            
+            cycle c(reconvergence);
+            c.print();
+            cycles_candidate.push_back(c);            
+
+        }
+
+    }
+
+
+}
+
+void Circuit::reset(){
+    for(int i = 0;i < ngate_ ; i++){
+        gates_[i].reset();
+    }
+}
+
+
+void Circuit::pop_fanout_branches(int u){
+    int index = -1;
+    for(int i = 0 ; i < fanout_branches.size() ; i++)
+    {
+        if( fanout_branches[i] == u )
+        {
+            index = i;
+            break;
+        } 
+    }
+
+    if(index != -1) fanout_branches.erase(fanout_branches.begin()+ index );
+
+}
+
+bool Circuit::cycle_available(cycle& c){
+    for(int i=0 ; i < c.nodes.size() ; i++)
+    {
+        if(!gates_[c.nodes[i]].get_available()) return false;
+    }
+    return true;
+}
 //=========================================================================//
 //11/30 update
-
-void Circuit::read_cycle() { // read cycle into vector< vector<int> > cycles from cycles.txt
-    string line;
-    ifstream myfile ("cycles.txt");
-    if (myfile.is_open())
-    {
-        while ( getline (myfile,line) )
-        {
-            vector<int> one_cycle;
-            size_t pos = 0;
-            string delimiter(" ");
-            string token;
-            while (1)
-            {
-                if(line.find(delimiter) == string::npos)
-                {
-                    int element = stoi(line);
-                    one_cycle.push_back(element);
-                    break;   
-                }
-                
-                pos = line.find(delimiter);
-                token = line.substr(0,pos);
-                int element = stoi(token);
-                one_cycle.push_back(element);
-                line.erase(0, pos + delimiter.length());
-            }
-
-            cycle c(one_cycle);
-            //debug
-            c.print();
-            cout << "PI :"<<endl;
-            c.getPI(gates_);
-            c.printPI();
-            cout << "PO :"<<endl;
-            c.getPO(gates_);
-            c.printPO();
-            //
-            cycles.push_back(c);
-        }
-        myfile.close();
-    }
-    else cout << "Unable to open cycles.txt"; 
-
-}
-
 
 void cycle::print(){ // for debug
     for(int i = 0;i < nodes.size(); i++ ) cout <<nodes[i]<<" ";

@@ -14,9 +14,48 @@
 
 #include "gate.h"
 
+//1/25 update
+#include <queue>
+
+//
 namespace CoreNs {
 
+//=========================================================================// 
+//11/30 update
+class cycle{
+    public:
+        cycle( vector<int>& v);
+        void print();//for debug
+        void getPI(Gate* gates);
+        void getPO(Gate* gates_);
+        void printPI();//for debug
+        void printPO();//for debug
+        vector<int> nodes;
+
+    private:
+        
+        vector< vector<int> > pi; // supergate primary input ex : vector<int>[0] = 2,3 (gate 2 , fanin 3)
+        vector< vector<int> > po; // supergate primary output
+
+
+};
+
+inline cycle::cycle( vector<int>& v){
+    nodes.assign(v.begin(), v.end());   
+}
+
+//=========================================================================// 
+
+
 class Circuit {
+private:
+    //=========================================================================// 
+    //11/30 update
+    vector< cycle > cycles_candidate;
+    vector< cycle > cycles;
+    vector< int > fanout_branches;
+    //=========================================================================//
+    
 public:
     Circuit();
     ~Circuit();
@@ -76,7 +115,17 @@ protected:
     void connectFrame();
     void assignFiMinLvl();
 
-    void runScoap(); 
+    void runScoap();
+    //=========================================================================//
+    //1/25 update : find_fanout_branches() , bfs(int idx)
+    //2/1  update : find_reconvergence(int idx) , reset() , pop_fanout_branches(int u)
+    void find_fanout_branches();
+    void bfs(int idx);
+    void find_reconvergence(int idx);
+    void reset();
+    void pop_fanout_branches(int u);
+    bool cycle_available(cycle& c);
+    //=========================================================================//
 };
 
 inline Circuit::Circuit() {
@@ -102,6 +151,10 @@ inline Circuit::~Circuit() {
     delete [] cellToGate_;
     delete [] portToGate_;
 }
+
+
+
+
 
 };
 
