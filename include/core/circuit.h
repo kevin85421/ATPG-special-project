@@ -24,24 +24,47 @@ namespace CoreNs {
 //11/30 update
 class cycle{
     public:
-        cycle( vector<int>& v);
-        void print();//for debug
-        void getPI(Gate* gates);
-        void getPO(Gate* gates_);
-        void printPI();//for debug
-        void printPO();//for debug
+        cycle( vector<int>& v , const int& nframe);
+        
+        void getPI();
+        void getPO();
+        void remove_redundant();
+        void setup(Gate* cirgates_);
+        bool single_output(int target , Gate* cirgates_);
+        void setSource(int src){source = src;}
         vector<int> nodes;
+        int npi_;
+        int npo_;
+        int ngate_;
+        int nframe_;
+        Gate* gates_;
+        int getSrc(){return source;}
+        int getTar(){return target_;}
+        
+        // for debug 
+        void print();
+        void printPI();
+        void printPO();
+        bool checkSingleOutput(Gate* cirgates_);
+        bool checkTargetfanin(Gate* cirgates_){
+            if(cirgates_[target_].nfi_ > 2){
+                return true;
+            }else{
+                return false;
+            }
+        }
 
     private:
-        
+        int target_;
+        int source;
         vector< vector<int> > pi; // supergate primary input ex : vector<int>[0] = 2,3 (gate 2 , fanin 3)
         vector< vector<int> > po; // supergate primary output
 
-
 };
 
-inline cycle::cycle( vector<int>& v){
-    nodes.assign(v.begin(), v.end());   
+inline cycle::cycle( vector<int>& v , const int& nframe){
+    nodes.assign(v.begin(), v.end());
+    nframe_ = nframe;   
 }
 
 //=========================================================================// 
@@ -54,10 +77,12 @@ private:
     vector< cycle > cycles_candidate;
     vector< cycle > cycles;
     vector< int > fanout_branches;
+    
     //=========================================================================//
     
 public:
     Circuit();
+    Circuit(cycle* cyc_);
     ~Circuit();
 
 	// specify how to connect multiple time frames of circuits
@@ -96,7 +121,8 @@ public:
     int             *fos_;        // fanout net array
     int             *cellToGate_; // map cells in netlist to gates
     int             *portToGate_; // map ports in netlist to gates
-
+    //4/12 update
+    vector< int > faultorder;
 protected:
     // for circuit building
     void createMap();
@@ -142,6 +168,24 @@ inline Circuit::Circuit() {
     gates_      = NULL;
     cellToGate_ = NULL;
     portToGate_ = NULL;
+}
+
+inline Circuit::Circuit(cycle* cyc_) {
+    nl_         = NULL;
+    npi_        = cyc_->npi_;
+    nppi_       = 0;
+    npo_        = cyc_->npo_;
+    ncomb_      = 0;
+    ngate_      = cyc_->ngate_;
+    nnet_       = 0;
+    lvl_        = -1;
+    nframe_     = 1;
+    connType_   = CAPTURE;
+    gates_      = cyc_->gates_;
+    cellToGate_ = NULL;
+    portToGate_ = NULL;
+
+
 }
 
 inline Circuit::~Circuit() {

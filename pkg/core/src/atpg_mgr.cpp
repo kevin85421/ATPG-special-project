@@ -25,16 +25,51 @@ using namespace std;
 using namespace CoreNs; 
 
 bool comp_fault(Fault* f1, Fault* f2);  
+bool comp_fault2(Fault* f1, Fault* f2);   // 4/15 update
+bool comp_fault3(Fault* f1, Fault* f2);   // 4/16 update
+bool comp_fault4(Fault* f1, Fault* f2);
+bool comp_fault5(Fault* f1, Fault* f2);
+
 void AtpgMgr::generation() { 
     pcoll_->init(cir_); 
     Fault *f = NULL; 
     for (int i=0; i<fListExtract_->faults_.size(); i++) 
         calc_fault_hardness(fListExtract_->faults_[i]); 
 
+    // set false : bool reconvergence
     FaultList flist = fListExtract_->current_; 
-    flist.sort(comp_fault); 
+    int numre = 0;
+    int num_fault = 0;
+    
+    for (auto const& f : flist) {
+        num_fault++;
+        f->reconvergence = cir_->gates_[f->gate_].reconvergence;
+        f->SG_size = cir_->gates_[f->gate_].SG_size;
+        f->num_reconvergence = cir_->gates_[f->gate_].num_reconvergence;
+        if(f->reconvergence == true){
+            numre++;
+        }
+    }
+    
+    flist.sort(comp_fault4);
 
+    //=============================================//
+    // 4/15 update 
+    /*
+    for (auto const& i : flist) {
+        if(i->reconvergence){
+            i->print();
+        }
+        
+
+    }
+    cout <<"===================================="<<endl;
+    */
+    //=============================================//
+    int total_back_track_count = 0;
+    int numre2 = 0;
     while (flist.begin()!=flist.end()) { 
+         
         if (flist.front()->state_==Fault::DT) { 
             flist.pop_front(); 
             continue; 
@@ -51,8 +86,12 @@ void AtpgMgr::generation() {
 
         f = flist.front();  
         atpg_ = new Atpg(cir_, f); 
-        Atpg::GenStatus ret = atpg_->Tpg(); 
+        Atpg::GenStatus ret = atpg_->Tpg();
+        //4/16 update 
+        //cout << "back_track_count : "<<f->get_back_track_count()<<endl;
+        total_back_track_count = total_back_track_count + f->get_back_track_count();  
 
+        //
         if (ret==Atpg::TEST_FOUND) { 
             Pattern *p = new Pattern; 
 		    p->pi1_ = new Value[cir_->npi_];
@@ -61,32 +100,125 @@ void AtpgMgr::generation() {
 		    p->ppo_ = new Value[cir_->nppi_];
 		    pcoll_->pats_.push_back(p);
             atpg_->GetPiPattern(p); 
+            //cout << "# before random fill :" << endl;
+            //pcoll_->PrintPattern(pcoll_->pats_.size()-1);
 
 		if ((pcoll_->staticCompression_ == PatternProcessor::OFF) && (pcoll_->XFill_ == PatternProcessor::ON)){
 			pcoll_->randomFill(pcoll_->pats_.back());
 		}
+            //cout << "# after random fill :" << endl;
+            //pcoll_->PrintPattern(pcoll_->pats_.size()-1);
+            //cout <<"flist size before fsim : " << flist.size() << endl;
 
             sim_->pfFaultSim(pcoll_->pats_.back(), flist); 
+
+            //cout <<"flist size after fsim : " << flist.size() << endl;
+            
             getPoPattern(pcoll_->pats_.back()); 
         }
         else if (ret==Atpg::UNTESTABLE) { 
-            flist.front()->state_ = Fault::AU; 
+            flist.front()->state_ = Fault::AU;
+            //4/15 update
+            flist.front()->print();
+            if(flist.front()->reconvergence == true){
+                numre2 ++ ;
+            }
+            // 
             flist.pop_front(); 
         }
         else { // ABORT 
             //TODO 
          // cout << "*** BACKTRACK NEEDED!! \n";  
-            flist.front()->state_ = Fault::AB; 
+            flist.front()->state_ = Fault::AB;
+            //4/15 update
+            flist.front()->print();
+            if(flist.front()->reconvergence == true){
+                numre2 ++ ;
+            }
+            // 
             flist.push_back(flist.front()); 
             flist.pop_front(); 
         }
 
         delete atpg_; 
     }
-}
 
+    cout <<"total_back_track_count : "<<total_back_track_count<<endl;
+    cout <<"total reconvergence = "<< numre <<endl;
+    cout <<"AB , AU reconvergence : "<< numre2 << endl;
+    cout <<"total faults : "<<num_fault<<endl;
+}
 bool comp_fault(Fault* f1, Fault* f2) {
     return f1->hard_ > f2->hard_; 
+} 
+
+bool comp_fault2(Fault* f1, Fault* f2) {
+
+    // origin return f1->hard_ > f2->hard_; 
+    // 4/15 update
+    if(f1->hard_ != f2->hard_){
+        return f1->hard_ > f2->hard_; 
+    }else{
+        if(f1->reconvergence == true){
+            return true;
+        }else if( f1->reconvergence == false && f2->reconvergence == true){
+            return false;
+        }else{
+            // f1 : false ; f2 : false
+            return true;
+        }
+    }
+    
+} 
+
+bool comp_fault3(Fault* f1, Fault* f2) {
+
+    // origin return f1->hard_ > f2->hard_; 
+    // 4/15 update
+    if(f1->hard_ != f2->hard_){
+        return f1->hard_ > f2->hard_; 
+    }else{
+        if(f1->reconvergence == true && f2->reconvergence == false){
+            return true;
+        }else if( f1->reconvergence == false && f2->reconvergence == true){
+            return false;
+        }else if( f1->reconvergence == true && f2->reconvergence == true){
+            if(f1->SG_size >= f2->SG_size){
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            return true;
+        }
+    }
+    
+} 
+
+
+bool comp_fault4(Fault* f1, Fault* f2) {
+
+    // origin return f1->hard_ > f2->hard_; 
+    // 4/15 update
+    if(f1->reconvergence == true && f2->reconvergence == false){
+        return true;
+    }else if(f1->reconvergence == false && f2->reconvergence == true){
+        return false;
+    }else if(f1->reconvergence == true && f2->reconvergence == true){
+        if(f1->hard_ >= f2->hard_){
+            return true;
+        }else{
+            return false;
+        }
+    }else{
+        return f1->hard_ > f2->hard_; 
+    }
+    
+    
+} 
+
+bool comp_fault5(Fault* f1, Fault* f2) {
+    return (f1->hard_ + f1->SG_size) > (f2->hard_ + f2->SG_size); 
 } 
 
 void AtpgMgr::calc_fault_hardness(Fault* f1) {

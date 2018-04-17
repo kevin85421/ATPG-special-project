@@ -56,10 +56,22 @@ bool Circuit::build(Netlist * const nl, const int &nframe,
     //1/25 , 2/1 update 
     find_fanout_branches();
     while(!fanout_branches.empty()){
-        cout <<"bfs("<<fanout_branches[0]<<") "<<endl;
         bfs(fanout_branches[0]);
     }
 
+    //============================for debug====================================//
+    /*
+    for (int i=0 ; i< cycles_candidate.size() ; i++)
+    {
+        if(!cycles_candidate[i].checkSingleOutput(gates_)){
+            cycles_candidate[i].print();
+            cout << "not single output" << endl;
+        }
+    }
+    */
+    //=========================================================================//
+    
+    cout <<"cycles_candidate : "<<cycles_candidate.size() << endl;
     //choose cycles
     while(!cycles_candidate.empty())
     {
@@ -75,13 +87,91 @@ bool Circuit::build(Netlist * const nl, const int &nframe,
             cycles_candidate.pop_back();
         }
     }
+    
+    cout <<"cycles : "<<cycles.size() << endl;
+    int cycle_total_gates = 0;
+    //remove redundant ex : cycle : 10 7 6 2 8 6 --> 10 7 6 2 8
+    for(int i=0 ;i< cycles.size() ; i++ )
+    {
+        //cycles[i].print();
+        cycle_total_gates = cycle_total_gates + cycles[i].nodes.size();
+        cycles[i].setup(gates_);
+    }
+    cout << "cycle_total_gates : "<< cycle_total_gates << endl;
 
+    //cout << "npi   = "<< npi_   << endl;
+    //cout << "ngate = "<< ngate_ << endl;
+    //=================================================================================//
+    // 4/15 update fault ordering (scoap)
+    /*
+    for(int i=0 ;i< cycles.size() ; i++ )
+    {
+        
+        gates_[ cycles[i].getSrc() ].reconvergence = true;
+        gates_[ cycles[i].getTar() ].reconvergence = true;
+
+    }
+    */
+    
+
+    //=================================================================================//
+    //=================================================================================//
+    // 4/12 update fault ordering
+    /*
+    vector<bool> boolvec;
+    for(int i=0;i<ngate_;i++){
+        boolvec.push_back(false);
+
+    }
+    for(int i=0 ;i< cycles.size() ; i++ )
+    {
+        //cycles[i].print();
+        //cout <<"src :"<< cycles[i].getSrc() <<" ;target :" << cycles[i].getTar() <<endl;
+        faultorder.push_back(cycles[i].getSrc());
+        faultorder.push_back(cycles[i].getTar());
+        boolvec[cycles[i].getSrc()]=true;
+        boolvec[cycles[i].getTar()]=true;
+
+    }
+
+    for(int i=0 ; i<boolvec.size();i++)
+    {
+        if(boolvec[i]==false)
+        {
+            faultorder.push_back(i);
+        }
+    }
+    */
+    //=================================================================================//
     //for debug
+    /*
+    cout << "build faultorder "<<endl;
+
+    if(faultorder.size()!=ngate_){
+        cout << "faultorder error" << endl;   
+    }
+
+    for(int i=0 ; i<faultorder.size() ; i++)
+    {
+        for(int j =i ; j<faultorder.size();j++)
+        {
+            if((faultorder[i] == faultorder[j]) && (i!=j))
+            {
+                cout << faultorder[i]<<" "<<i<<" "<<j;
+                cout << "faultorder error!" << endl;
+            }
+        }
+    }
+    */
+    //=================================================================================//
+    //for debug
+    /*
     cout << "cycles : "<< cycles.size() <<endl;
     for(int i =0 ; i < cycles.size() ; i++)
     {
         cycles[i].print();
     }
+    */
     //=========================================================================//    
 
     return true;
@@ -805,8 +895,8 @@ void  Circuit::find_fanout_branches() {
             fanout_branches.push_back(i);
             gates_[i].set_Fanoutb(true);
             //for debug
-            cout << "fanout_branches : ";
-            cout << i << " "; 
+            //cout << "fanout_branches : ";
+            //cout << i << " "; 
         }
             
     }
@@ -851,8 +941,10 @@ void Circuit::bfs(int idx){
 
 }
 
+
+
 void Circuit::find_reconvergence(int idx){
-    cout <<"cycles_candidate : " << endl;
+    //cout <<"cycles_candidate : " << endl;
     for(int i=0 ; i < ngate_ ; i++ )
     {
         if(gates_[i].getd1() != -1 && gates_[i].getd2() != -1 )
@@ -888,10 +980,35 @@ void Circuit::find_reconvergence(int idx){
                     }
                 }
             }
+            reconvergence.push_back(idx);          
             
-            cycle c(reconvergence);
-            c.print();
-            cycles_candidate.push_back(c);            
+            cycle c(reconvergence , nframe_);
+            c.setSource(idx);
+            // 4/15 update set reconvergence (for fault ordering)
+            //gates_[ c.getSrc() ].reconvergence = true;
+            gates_[ i ].reconvergence = true;
+            
+            c.remove_redundant();  
+
+            //gates_[ i ].num_reconvergence += c.nodes.size(); 
+
+            if (c.nodes.size() > gates_[ i ].SG_size){
+                gates_[ i ].SG_size = c.nodes.size();// supergate's size 必須放在 remove redundant 之後
+            }
+            
+
+            // transform to single output
+            // 若不為 single output , 則不為 candidate 
+            
+            if( c.single_output(i , gates_) )
+            {
+
+                cycles_candidate.push_back(c);
+                // 4/15 update
+                //gates_[ i ].reconvergence= true;
+                //c.print();     
+            } 
+            
 
         }
 
@@ -929,6 +1046,7 @@ bool Circuit::cycle_available(cycle& c){
     }
     return true;
 }
+
 //=========================================================================//
 //11/30 update
 
@@ -937,14 +1055,15 @@ void cycle::print(){ // for debug
     cout << endl;
 }
 
-void cycle::getPI(Gate* gates_){
-    for(int i = 0;i < nodes.size(); i++){
-        for(int j = 0 ; j < gates_[nodes[i]].nfi_ ; j++)
+void cycle::getPI(){
+
+    for(int i = 0;i < ngate_; i++){
+        for(int j = 0 ; j < gates_[i].nfi_ ; j++)
         {
             bool flag = true;
-            for(int k = 0 ; k < nodes.size() ; k++)
+            for(int k = 0 ; k < ngate_ ; k++)
             {
-                if( gates_[nodes[i]].fis_[j] == nodes[k] )
+                if( gates_[i].fis_[j] == gates_[k].id_ )
                 {
                     flag = false;  
                     break;
@@ -955,7 +1074,7 @@ void cycle::getPI(Gate* gates_){
             {
                 vector<int> v; // (gate, fanin)
                 v.push_back(nodes[i]);
-                v.push_back(gates_[nodes[i]].fis_[j]);
+                v.push_back(gates_[i].fis_[j]);
                 pi.push_back(v);
             } 
         }
@@ -969,14 +1088,14 @@ void cycle::printPI(){
     }
 }
 
-void cycle::getPO(Gate* gates_){
-    for(int i = 0;i < nodes.size(); i++){
-        for(int j = 0 ; j < gates_[nodes[i]].nfo_ ; j++)
+void cycle::getPO(){
+    for(int i = 0;i < ngate_; i++){
+        for(int j = 0 ; j < gates_[i].nfo_ ; j++)
         {
             bool flag = true;
-            for(int k = 0 ; k < nodes.size() ; k++)
+            for(int k = 0 ; k < ngate_ ; k++)
             {
-                if( gates_[nodes[i]].fos_[j] == nodes[k] )
+                if( gates_[i].fos_[j] == gates_[k].id_ )
                 {
                     flag = false;  
                     break;
@@ -987,7 +1106,7 @@ void cycle::getPO(Gate* gates_){
             {
                 vector<int> v; // (gate, fanin)
                 v.push_back(nodes[i]);
-                v.push_back(gates_[nodes[i]].fos_[j]);
+                v.push_back(gates_[i].fos_[j]);
                 po.push_back(v);
             } 
         }
@@ -1000,6 +1119,96 @@ void cycle::printPO(){
         cout <<"("<<po[i][0]<<","<<po[i][1]<<")"<<endl;
     }
 }
+
+void cycle::remove_redundant(){
+    int index = -1 ;
+    for (int j = 0 ; j < nodes.size() -1 ; j ++)
+    {
+        if(nodes[j] == nodes[nodes.size()-1]){
+            index = j;
+            //cout << "index = "<< index << endl; 
+            break;
+        } 
+    }
+
+    for (int k = 0 ; ; k ++)
+    {
+        if(nodes[index - k] != nodes[nodes.size()- 1 - k] )
+        {
+            //cout << "k = "<<k << endl;
+            for(int l = 0 ; l < k ; l ++)
+            {
+                nodes.pop_back();
+            }
+
+            for(int m = 0 ; m < k - 1 ; m ++)
+            {
+                nodes.erase(nodes.begin() + index -m );
+            }
+            this->setSource(nodes[index-k+1]);
+            break;
+        }
+    }
+    
+}
+
+void cycle::setup(Gate* cirgates_){
+    ngate_  = nodes.size();
+    gates_ = new Gate[ngate_ * nframe_ ];
+    for(int i = 0; i < ngate_ ; i++)
+    {
+        gates_[i] = cirgates_[nodes[i]];
+    }
+    getPI(); 
+    getPO();
+    npi_    = pi.size(); 
+    npo_    = po.size();
+
+
+    //for debug
+    //cout << "print PI : "<<endl;
+    //printPI();
+    //cout << "print PO : "<<endl;
+    //printPO();
+    
+}
+
+bool cycle::single_output(int target , Gate* cirgates_){
+
+    target_ = target ;
+    for(int index = 0; index < nodes.size() ; index ++)
+    {
+        if(nodes[index] != target && nodes[index] != this->source )
+        {
+            if( cirgates_[ nodes[index] ].get_Fanoutb() == true)
+            {
+                //cout << nodes[index] << " is fanout branch !" << endl;
+                return false;
+            }
+        }
+    }
+
+    return true;
+
+}
 //=========================================================================//
+// for debug
+bool cycle::checkSingleOutput(Gate* cirgates_){
+    int i = 0;
+    for(int i = 0; i < nodes.size() ; i++)
+    {
+        if( cirgates_[nodes[i]].get_Fanoutb() == true )
+        {
+            i++;
+        }
+    }
+    if(i > 2){
+        return false;
+    }else{
+        return true;
+    }
+}
+
+
 
 

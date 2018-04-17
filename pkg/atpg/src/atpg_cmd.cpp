@@ -552,15 +552,19 @@ bool ReportCircuitCmd::exec(const vector<string> &argv) {
     cout << "#    number of gates: " << fanMgr_->atpg_mgr->cir_->ngate_ << endl;
     cout << "#    number of nets:  " << fanMgr_->atpg_mgr->cir_->nnet_ << endl;
     //11/22 update
-    /*
+    
     cout <<"===================================================================="<<endl;
     cout <<" gates of circuit :"<<endl;
+    int test__ = 0;
     for(int i = 0;i < fanMgr_->atpg_mgr->cir_->ngate_; i++){
-        fanMgr_->atpg_mgr->cir_->gates_[i].print();
+        if(fanMgr_->atpg_mgr->cir_->gates_[i].nfi_ > 2){
+            test__ ++;
+        }
     }
+    cout << "# fanin > 2 : "<< test__ << endl; 
 
     cout <<"===================================================================="<<endl;
-    */
+    
     //================================================================//
     return true;
 } //}}}
@@ -1044,7 +1048,7 @@ bool RunFaultSimCmd::exec(const vector<string> &argv) {
     return true;
 } //}}}
 
-//{{{ RunAtpgCmd::RunAtpgCmd()
+//{{{ AtpgCmd::AtpgCmd()
 RunAtpgCmd::RunAtpgCmd(const std::string &name, FanMgr *fanMgr) :
   Cmd(name) {
     fanMgr_ = fanMgr;
@@ -1091,6 +1095,8 @@ bool RunAtpgCmd::exec(const vector<string> &argv) {
 
     fanMgr_->tmusg.getPeriodUsage(fanMgr_->atpgStat);
     cout << "#  Finished pattern generation";
+    //PRINT Patterns update
+    //fanMgr_->atpg_mgr->pcoll_->PrintPatterns();
     cout << "    " << (double)fanMgr_->atpgStat.rTime / 1000000.0 << " s";
     cout << "    " << (double)fanMgr_->atpgStat.vmSize / 1024.0   << " MB";
     cout << endl;

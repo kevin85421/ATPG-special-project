@@ -31,11 +31,14 @@ Atpg::GenStatus Atpg::Tpg() {
             Backtrace(); // Make a decision 
         } 
         else { 
-            if(!BackTrack()) 
+            if(!BackTrack()) {
+                current_fault_->set_back_track_count(back_track_count);
                 return (back_track_count>=back_track_limit)?ABORT:UNTESTABLE; 
+            }
         }
         Imply(); 
         if (isaTest()) { 
+            current_fault_->set_back_track_count(back_track_count);
             return TEST_FOUND; 
         }
     }

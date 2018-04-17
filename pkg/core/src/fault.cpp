@@ -22,7 +22,10 @@ void FaultListExtract::extract(Circuit *cir) {
     delete [] gateToFault_;
 
     // For stuck-at fault
-	if (type_ == SAF) {
+//=====================================================================//
+// original version
+	
+    if (type_ == SAF) {
         gateToFault_ = new int[cir->ngate_];
         for (int i = 0; i < cir->ngate_; ++i) {
             gateToFault_[i] = faults_.size();
@@ -40,75 +43,42 @@ void FaultListExtract::extract(Circuit *cir) {
                     faults_.push_back(new Fault(i, Fault::SA1, j + 1));
                 }
             }
-            /** not considered so far... 
-            if (cir->gates_[i].type_ == Gate::PPI) {
-                temp = new Fault(i, Fault::SA0, -1); //CK
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA0, -2); //SE
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA0, -3); //SI
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA0, -4); //QN
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA1, -1); //CK
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA1, -2); //SE
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA1, -3); //SI
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-                temp = new Fault(i, Fault::SA1, -4); //QN
-                temp->state_ = Fault::DT;
-                faults_.push_back(temp);
-            } */ 
+            
         }
 
-/** not considered so far... 
-// HYH try to fix the fault number @20141121
 
-    for (size_t i = 0; i < cir->nl_->getTop()->getNPort(); ++i) {
-        Port *p = cir->nl_->getTop()->getPort(i);
-        if (!strcmp(p->name_,"CK")) { //sequential circuit
-            temp = new Fault(-1,Fault::SA0,0);//CK
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-            temp = new Fault(-1,Fault::SA1,0);
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-
-            temp = new Fault(-2,Fault::SA0,0);//test_si
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-            temp = new Fault(-2,Fault::SA1,0);
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-
-            temp = new Fault(-3,Fault::SA0,0); //test_so
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-            temp = new Fault(-3,Fault::SA1,0);
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-
-            temp = new Fault(-4,Fault::SA0,0);//test_se
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-            temp = new Fault(-4,Fault::SA1,0);
-            temp->state_ = Fault::DT;
-            faults_.push_back(temp);
-        }
-
-    } */ 
-//
     }// end of stuck-at fault
+    
+    
 	// for transition fault
-	// 
+//=====================================================================//
+    // 4/12 update faultorder
+    /*
+    if (type_ == SAF) {
+        gateToFault_ = new int[cir->ngate_];
+        for (int i = 0; i < cir->faultorder.size(); ++i) {
+            gateToFault_[cir->faultorder[i]] = faults_.size();
+            // extract fault of gate outputs 
+            // but do not extract faults between two time frames
+            //if (cir->gates_[i].nfo_ > 0 && i < cir->ngate_ - cir->nppi_) {
+            if (cir->gates_[cir->faultorder[i]].nfo_ > 0 && i < cir->npi_ + cir->nppi_) {
+                    faults_.push_back(new Fault(cir->faultorder[i], Fault::SA0, 0));
+                    faults_.push_back(new Fault(cir->faultorder[i], Fault::SA1, 0));
+            }
+            // extract faults of gate inputs
+            for (int j = 0; j < cir->gates_[cir->faultorder[i]].nfi_; ++j) {
+                if (cir->gates_[cir->gates_[cir->faultorder[i]].fis_[j]].nfo_>1) { 
+                    faults_.push_back(new Fault(cir->faultorder[i], Fault::SA0, j + 1));
+                    faults_.push_back(new Fault(cir->faultorder[i], Fault::SA1, j + 1));
+                }
+            }
+        }
+
+
+    }// end of stuck-at fault
+    */
+    
+//=====================================================================//
     else {
         gateToFault_ = new int[cir->ngate_];
         for (int i = 0; i < cir->ngate_; ++i) {

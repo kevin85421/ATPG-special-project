@@ -104,6 +104,11 @@ public:
     bool get_available(){return available;}
     void set_available(bool b){available = b;}
 
+    // 4/15 update
+    bool reconvergence; // true : src or target of reconvergence
+    int SG_size;
+    int num_reconvergence;
+
 private:
     //1/25 update for bfs
     int d1;
@@ -149,6 +154,10 @@ inline Gate::Gate() {
     pi2 = -1;
     fanoutb = false;
     available = true;
+    // 4/15 update
+    reconvergence = false;
+    SG_size = 0;
+    num_reconvergence = 0;
 }
 
 inline Gate::~Gate() {

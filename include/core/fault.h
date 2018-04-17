@@ -57,8 +57,14 @@ public:
     State state_; // fault state
 
     int   hard_; 
-
+    bool reconvergence;
+    int SG_size;
+    int num_reconvergence;
+    void set_back_track_count(int i){back_track_count = i;}
+    int get_back_track_count(){return back_track_count;}
     void  print() const; 
+private:
+    int back_track_count;
 };
 
 class FaultListExtract {
@@ -83,7 +89,11 @@ inline Fault::Fault() {
     line_  = -1;
     det_   = 0;
     state_ = UD;
-    hard_  = -1; 
+    hard_  = -1;
+    reconvergence = false; 
+    SG_size = 0;
+    back_track_count = 0;
+    num_reconvergence = 0;
 }
 // for bridging fault only
 inline Fault::Fault(int gate, Type type, int line, int aggr) {
@@ -140,7 +150,13 @@ inline void Fault::print() const
             cout << " AB     ";
             break;
     }
-    cout << gate_ << "/" << line_ << endl;  
+    cout << gate_ << "/" << line_ << " / hard : "<< hard_ <<" / reconvergence : ";
+    if (reconvergence == true){
+        cout << "true ";
+    }else{
+        cout << "false ";
+    }
+    cout << " / SG_size : "<< SG_size << " / num_reconvergence : "<<num_reconvergence <<endl;
 }
 
 inline FaultListExtract::FaultListExtract() {
